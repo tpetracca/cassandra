@@ -90,6 +90,35 @@ public class CompressedSequentialWriter extends SequentialWriter
     }
 
     @Override
+    public long getEffectiveOnDiskBytesWritten()
+    {
+        return currentCompacted();
+    }
+
+    private long currentCompacted() {
+        return chunkOffset + estimateCompressedSizeOfBuffer();
+    }
+
+    /*
+     * this method will return 0 when we don't have a compression ratio thus far
+     * despite data being in the buffer (which only happens when we've never compressed
+     * any data yet), but that's fine given we're only using this to help figure out if
+     * we're over the threshold size for an sstable (which should only happen when we've
+     * compressed data at least once)
+     */
+    private long estimateCompressedSizeOfBuffer() {
+        if (buffer == null) {
+            return 0;
+        }
+
+        return Math.round(buffer.position() * compressionRatioThusFar()) + 4;
+    }
+
+    private double compressionRatioThusFar() {
+        return uncompressedSize == 0 ? 0 : compressedSize / uncompressedSize;
+    }
+
+    @Override
     public void flush()
     {
         throw new UnsupportedOperationException();

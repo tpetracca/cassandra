@@ -45,6 +45,7 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.locator.SimpleStrategy;
+import org.apache.cassandra.utils.Pair;
 
 import static org.junit.Assert.assertEquals;
 
@@ -91,25 +92,45 @@ public class CompactionAwareWriterTest
         validateData(cfs, rowCount);
         cfs.truncateBlocking();
     }
-
-    @Test
-    public void testMaxSSTableSizeWriter()
+    
+    public void genericMaxSStableSizeWriterTest(int rowCount, Pair<Integer,Integer> sizeAndExpected)
     {
         Keyspace ks = Keyspace.open(KEYSPACE1);
         ColumnFamilyStore cfs = ks.getColumnFamilyStore(CF);
         cfs.disableAutoCompaction();
-        int rowCount = 1000;
         populate(cfs, rowCount);
         LifecycleTransaction txn = cfs.getTracker().tryModify(cfs.getSSTables(), OperationType.COMPACTION);
         long beforeSize = txn.originals().iterator().next().onDiskLength();
-        int sstableSize = (int)beforeSize/10;
-        CompactionAwareWriter writer = new MaxSSTableSizeWriter(cfs, txn, txn.originals(), sstableSize, 0, false, OperationType.COMPACTION);
+        
+        int maxSstableSize = (int)beforeSize/10;
+        int expectedSstableCount = 10;
+        if (sizeAndExpected != null) {
+            maxSstableSize = sizeAndExpected.left;
+            expectedSstableCount = sizeAndExpected.right;
+        }
+        
+        CompactionAwareWriter writer = new MaxSSTableSizeWriter(cfs, txn, txn.originals(), maxSstableSize, 0, false, OperationType.COMPACTION);
         int rows = compact(cfs, txn, writer);
-        assertEquals(10, cfs.getSSTables().size());
+        assertEquals(expectedSstableCount, cfs.getSSTables().size());
         assertEquals(rowCount, rows);
         validateData(cfs, rowCount);
         cfs.truncateBlocking();
     }
+
+    @Test
+    public void testMaxSSTableSizeWriter()
+    {
+        genericMaxSStableSizeWriterTest(1000, null);
+    }
+    
+    // by making sstable size 1 byte we force getEffectiveOnDiskBytes to force creating a new
+    // writer even though we haven't flushed our buffer at all and should have an onDiskFilePointer of 0
+    @Test
+    public void testReallySmallMaxSSTableSize()
+    {
+        genericMaxSStableSizeWriterTest(10, Pair.create(1, 10));
+    }
+
     @Test
     public void testSplittingSizeTieredCompactionWriter()
     {
