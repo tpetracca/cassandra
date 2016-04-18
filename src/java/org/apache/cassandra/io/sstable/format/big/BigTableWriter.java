@@ -359,6 +359,11 @@ public class BigTableWriter extends SSTableWriter
         return dataFile.getOnDiskFilePointer();
     }
 
+    public long getEffectiveOnDiskBytesWritten()
+    {
+        return dataFile.getEffectiveOnDiskBytesWritten();
+    }
+
     /**
      * Encapsulates writing the index and filter for an SSTable. The state of this object is not valid until it has been closed.
      */

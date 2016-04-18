@@ -86,7 +86,7 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter
     public boolean realAppend(UnfilteredRowIterator partition)
     {
         RowIndexEntry rie = sstableWriter.append(partition);
-        if (sstableWriter.currentWriter().getOnDiskFilePointer() > maxSSTableSize)
+        if (sstableWriter.currentWriter().getEffectiveOnDiskBytesWritten() > maxSSTableSize)
             switchCompactionLocation(getWriteDirectory(expectedWriteSize));
         return rie != null;
     }

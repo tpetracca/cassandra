@@ -75,12 +75,12 @@ public class MajorLeveledCompactionWriter extends CompactionAwareWriter
     @SuppressWarnings("resource")
     public boolean realAppend(UnfilteredRowIterator partition)
     {
-        long posBefore = sstableWriter.currentWriter().getOnDiskFilePointer();
         RowIndexEntry rie = sstableWriter.append(partition);
-        totalWrittenInLevel += sstableWriter.currentWriter().getOnDiskFilePointer() - posBefore;
         partitionsWritten++;
-        if (sstableWriter.currentWriter().getOnDiskFilePointer() > maxSSTableSize)
+        long totalWrittenInCurrentWriter = sstableWriter.currentWriter().getEffectiveOnDiskBytesWritten();
+        if (totalWrittenInCurrentWriter > maxSSTableSize)
         {
+            totalWrittenInLevel += totalWrittenInCurrentWriter;
             if (totalWrittenInLevel > LeveledManifest.maxBytesForLevel(currentLevel, maxSSTableSize))
             {
                 totalWrittenInLevel = 0;
