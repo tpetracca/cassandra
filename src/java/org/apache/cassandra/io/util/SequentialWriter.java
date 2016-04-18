@@ -276,6 +276,24 @@ public class SequentialWriter extends BufferedDataOutputStreamPlus implements Tr
         return position();
     }
 
+    /**
+     * Return the number of bytes that represents how large the file "channel" would be
+     * when fully flushed to disk if "this" were closed now.
+     *
+     * For SequentialWriter, this is equivalent to the value of getFilePointer or current,
+     * the actual offset we're writing to the file (bufferOffset) plus the number of
+     * bytes currently in the buffer (buffer.position())
+     *
+     * For compressed files, this value refers to the compressed data, which can only be
+     * approximated because we don't know the compressed size of the bytes currently in the
+     * buffer.  It would be the actual offset we're writing to the file (chunkOffset) plus
+     * the expected size of the compressing valid bytes currently in the buffer.
+     */
+    public long getEffectiveOnDiskBytesWritten()
+    {
+        return getFilePointer();
+    }
+
     public long length()
     {
         try
